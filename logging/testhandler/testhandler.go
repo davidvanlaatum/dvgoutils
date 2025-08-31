@@ -3,7 +3,6 @@ package testhandler
 import (
 	"bytes"
 	"context"
-	"dvgoutils"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/davidvanlaatum/dvgoutils"
 )
 
 type LogRecord struct {
