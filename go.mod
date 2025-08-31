@@ -1,4 +1,4 @@
-module dvgoutils
+module github.com/davidvanlaatum/dvgoutils
 
 go 1.24
 
