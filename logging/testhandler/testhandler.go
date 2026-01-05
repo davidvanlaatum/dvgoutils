@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -51,6 +52,7 @@ func (l *LogRecord) String() string {
 
 type logsHolder struct {
 	logs []LogRecord
+	mu   sync.Mutex
 }
 
 type TestHandler struct {
@@ -65,6 +67,8 @@ func NewTestHandler(t testing.TB) *TestHandler {
 }
 
 func (t *TestHandler) Logs() []LogRecord {
+	t.logs.mu.Lock()
+	defer t.logs.mu.Unlock()
 	return t.logs.logs
 }
 
@@ -113,7 +117,11 @@ func (t *TestHandler) Handle(_ context.Context, record slog.Record) error {
 		return true
 	})
 	r.Attrs = append(r.Attrs, dvgoutils.FilterSlice(expandGroup(t.group, newAttr), dropEmptyKey)...)
-	t.logs.logs = append(t.logs.logs, *r)
+	func() {
+		t.logs.mu.Lock()
+		defer t.logs.mu.Unlock()
+		t.logs.logs = append(t.logs.logs, *r)
+	}()
 	t.T.Log(r.String())
 	return nil
 }
