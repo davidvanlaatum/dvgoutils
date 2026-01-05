@@ -1,0 +1,1 @@
+{"go-coverage-action-fmt":1,"coverage_pct":58.59375,"pkg_stats":{"github.com/davidvanlaatum/dvgoutils":[100],"github.com/davidvanlaatum/dvgoutils/logging":[100],"github.com/davidvanlaatum/dvgoutils/logging/testhandler":[52.25225225225225]},"skipped_count":0}
