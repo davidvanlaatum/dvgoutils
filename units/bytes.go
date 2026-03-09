@@ -2,6 +2,7 @@ package units
 
 import (
 	"fmt"
+	"log/slog"
 )
 
 type Bytes int64
@@ -26,4 +27,8 @@ func (b Bytes) String() string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+func (b Bytes) LogValue() slog.Value {
+	return slog.StringValue(b.String())
 }

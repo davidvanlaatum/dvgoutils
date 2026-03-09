@@ -2,17 +2,18 @@ package units
 
 import (
 	"fmt"
+	"log/slog"
 )
 
 type Bits int64
 
 const (
-	Kb Bits = 1000 * (iota + 1)
-	Mb
-	Gb
-	Tb
-	Pb
-	Eb
+	Kb Bits = 1000
+	Mb      = Kb * 1000
+	Gb      = Mb * 1000
+	Tb      = Gb * 1000
+	Pb      = Tb * 1000
+	Eb      = Pb * 1000
 )
 
 func (b Bits) String() string {
@@ -26,4 +27,8 @@ func (b Bits) String() string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cb", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+func (b Bits) LogValue() slog.Value {
+	return slog.StringValue(b.String())
 }
