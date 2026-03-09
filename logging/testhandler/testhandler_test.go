@@ -1,6 +1,7 @@
 package testhandler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/davidvanlaatum/dvgoutils/logging"
 	"github.com/stretchr/testify/require"
 )
 
@@ -87,27 +89,29 @@ var expectedLogs = map[string]string{
 func TestSlogHandler(t *testing.T) {
 	var h *TestHandler
 	var d *DummyTB
-	slogtest.Run(t, func(t *testing.T) slog.Handler {
-		d = &DummyTB{TB: t}
-		h = NewTestHandler(d)
-		return h
-	}, func(t *testing.T) map[string]any {
-		l := h.Logs()
-		r := require.New(t)
-		r.Len(l, 1, "expected exactly one log entry")
-		temp := template.Must(template.New("").Parse(expectedLogs[strings.SplitN(t.Name(), "/", 2)[1]]))
-		b := &strings.Builder{}
-		data := map[string]string{
-			"time": h.logs.logs[0].Time.Format(time.RFC3339Nano),
-		}
-		if l[0].Location != "" {
-			data["line"] = strings.SplitN(l[0].Location, ":", 2)[1]
-		}
-		r.NoError(temp.Execute(b, data))
-		r.Equal(b.String(), d.logs[0])
-		a := l[0].attrMap()
-		return a
-	})
+	slogtest.Run(
+		t, func(t *testing.T) slog.Handler {
+			d = &DummyTB{TB: t}
+			h = NewTestHandler(d)
+			return h
+		}, func(t *testing.T) map[string]any {
+			l := h.Logs()
+			r := require.New(t)
+			r.Len(l, 1, "expected exactly one log entry")
+			temp := template.Must(template.New("").Parse(expectedLogs[strings.SplitN(t.Name(), "/", 2)[1]]))
+			b := &strings.Builder{}
+			data := map[string]string{
+				"time": h.logs.logs[0].Time.Format(time.RFC3339Nano),
+			}
+			if l[0].Location != "" {
+				data["line"] = strings.SplitN(l[0].Location, ":", 2)[1]
+			}
+			r.NoError(temp.Execute(b, data))
+			r.Equal(b.String(), d.logs[0])
+			a := l[0].attrMap()
+			return a
+		},
+	)
 }
 
 type errorOnJSONMarshal struct {
@@ -123,7 +127,29 @@ func TestSlogHandler_MarshalError(t *testing.T) {
 	h := NewTestHandler(d)
 	logger := slog.New(h)
 	_, e := json.Marshal(&errorOnJSONMarshal{})
-	r.PanicsWithError(e.Error(), func() {
-		logger.Info("msg", slog.Any("k", &errorOnJSONMarshal{}))
-	})
+	r.PanicsWithError(
+		e.Error(), func() {
+			logger.Info("msg", slog.Any("k", &errorOnJSONMarshal{}))
+		},
+	)
+}
+
+func TestTBFromContext(t *testing.T) {
+	r := require.New(t)
+	h := NewTestHandler(t)
+	ctx := logging.WithLogger(t.Context(), slog.New(h))
+	tb := TBFromContext(ctx)
+	r.Same(t, tb)
+}
+
+func TestTBFromContextNotTestHandler(t *testing.T) {
+	r := require.New(t)
+	h := slog.NewTextHandler(&bytes.Buffer{}, nil)
+	ctx := logging.WithLogger(t.Context(), slog.New(h))
+	r.PanicsWithValue(
+		"logger handler is not a TestHandler",
+		func() {
+			TBFromContext(ctx)
+		},
+	)
 }

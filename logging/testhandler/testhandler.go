@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/davidvanlaatum/dvgoutils"
+	"github.com/davidvanlaatum/dvgoutils/logging"
 )
 
 type LogRecord struct {
@@ -32,22 +33,27 @@ func (l *LogRecord) String() string {
 	if l.Location != "" {
 		a = append(a, slog.String("location", l.Location))
 	}
-	a = append(a,
+	a = append(
+		a,
 		slog.String(slog.LevelKey, l.Level.String()),
 		slog.String(slog.MessageKey, l.Msg),
 	)
 	a = append(a, l.Attrs...)
-	return strings.Join(dvgoutils.MapSlice(a, func(a slog.Attr) string {
-		v := &bytes.Buffer{}
-		e := json.NewEncoder(v)
-		if err := e.Encode(a.Value.Resolve().Any()); err != nil {
-			panic(err)
-		}
-		for v.Len() > 0 && v.Bytes()[v.Len()-1] == '\n' {
-			v.Truncate(v.Len() - 1)
-		}
-		return fmt.Sprintf("%s=%s", a.Key, v.String())
-	}), " ")
+	return strings.Join(
+		dvgoutils.MapSlice(
+			a, func(a slog.Attr) string {
+				v := &bytes.Buffer{}
+				e := json.NewEncoder(v)
+				if err := e.Encode(a.Value.Resolve().Any()); err != nil {
+					panic(err)
+				}
+				for v.Len() > 0 && v.Bytes()[v.Len()-1] == '\n' {
+					v.Truncate(v.Len() - 1)
+				}
+				return fmt.Sprintf("%s=%s", a.Key, v.String())
+			},
+		), " ",
+	)
 }
 
 type logsHolder struct {
@@ -112,10 +118,12 @@ func (t *TestHandler) Handle(_ context.Context, record slog.Record) error {
 	r.Attrs = make([]slog.Attr, 0, len(t.attr)+record.NumAttrs())
 	r.Attrs = append(r.Attrs, t.attr...)
 	var newAttr []slog.Attr
-	record.Attrs(func(attr slog.Attr) bool {
-		newAttr = append(newAttr, attr)
-		return true
-	})
+	record.Attrs(
+		func(attr slog.Attr) bool {
+			newAttr = append(newAttr, attr)
+			return true
+		},
+	)
 	r.Attrs = append(r.Attrs, dvgoutils.FilterSlice(expandGroup(t.group, newAttr), dropEmptyKey)...)
 	func() {
 		t.logs.mu.Lock()
@@ -153,3 +161,11 @@ func (t *TestHandler) WithGroup(name string) slog.Handler {
 }
 
 var _ slog.Handler = (*TestHandler)(nil)
+
+func TBFromContext(ctx context.Context) testing.TB {
+	logger := logging.FromContext(ctx)
+	if testhandler, ok := logger.Handler().(*TestHandler); ok {
+		return testhandler.T
+	}
+	panic("logger handler is not a TestHandler")
+}
