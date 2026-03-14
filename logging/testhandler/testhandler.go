@@ -170,9 +170,35 @@ func TBFromContext(ctx context.Context) testing.TB {
 	panic("logger handler is not a TestHandler")
 }
 
-func SetupTestHandler(t testing.TB) (ctx context.Context, handler *TestHandler, logger *slog.Logger) {
+type HandlerWrapperFunc func(slog.Handler) slog.Handler
+
+type setupTestHandlerConfig struct {
+	handlerWrappers []HandlerWrapperFunc
+}
+
+type SetupOption func(*setupTestHandlerConfig)
+
+func WithHandlerWrapper(f HandlerWrapperFunc) SetupOption {
+	return func(cfg *setupTestHandlerConfig) {
+		cfg.handlerWrappers = append(cfg.handlerWrappers, f)
+	}
+}
+
+func SetupTestHandler(t testing.TB, opts ...SetupOption) (
+	ctx context.Context,
+	handler *TestHandler,
+	logger *slog.Logger,
+) {
+	var cfg setupTestHandlerConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
 	handler = NewTestHandler(t)
-	logger = slog.New(handler)
+	var h slog.Handler = handler
+	for _, w := range cfg.handlerWrappers {
+		h = w(h)
+	}
+	logger = slog.New(h)
 	ctx = logging.WithLogger(t.Context(), logger)
 	return
 }

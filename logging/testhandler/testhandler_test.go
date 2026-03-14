@@ -164,3 +164,64 @@ func TestSetupTestHandler(t *testing.T) {
 	r.Same(h, log.Handler())
 	r.Same(log, logging.FromContext(ctx))
 }
+
+func TestWithHandlerWrapper(t *testing.T) {
+	type mockHandlerWrapper struct {
+		slog.Handler
+	}
+	r := require.New(t)
+	called := false
+	ctx, h, log := SetupTestHandler(
+		t, WithHandlerWrapper(
+			func(next slog.Handler) slog.Handler {
+				called = true
+				return &mockHandlerWrapper{next}
+			},
+		),
+	)
+	r.NotNil(ctx)
+	r.NotNil(h)
+	r.NotNil(log)
+	r.NotSame(t.Context(), ctx)
+	r.NotSame(h, log.Handler())
+	r.IsType(&mockHandlerWrapper{}, log.Handler())
+	r.Same(h, log.Handler().(*mockHandlerWrapper).Handler)
+	r.Same(log, logging.FromContext(ctx))
+	r.True(called, "expected handler wrapper to be called")
+}
+
+func TestWithHandlerWrapperMultiple(t *testing.T) {
+	type mockHandlerWrapper struct {
+		slog.Handler
+	}
+	type mockHandlerWrapper2 struct {
+		slog.Handler
+	}
+	r := require.New(t)
+	called := false
+	called2 := false
+	ctx, h, log := SetupTestHandler(
+		t, WithHandlerWrapper(
+			func(next slog.Handler) slog.Handler {
+				called = true
+				return &mockHandlerWrapper{next}
+			},
+		), WithHandlerWrapper(
+			func(next slog.Handler) slog.Handler {
+				called2 = true
+				return &mockHandlerWrapper2{next}
+			},
+		),
+	)
+	r.NotNil(ctx)
+	r.NotNil(h)
+	r.NotNil(log)
+	r.NotSame(t.Context(), ctx)
+	r.NotSame(h, log.Handler())
+	r.IsType(&mockHandlerWrapper2{}, log.Handler())
+	r.IsType(&mockHandlerWrapper{}, log.Handler().(*mockHandlerWrapper2).Handler)
+	r.Same(h, log.Handler().(*mockHandlerWrapper2).Handler.(*mockHandlerWrapper).Handler)
+	r.Same(log, logging.FromContext(ctx))
+	r.True(called, "expected handler wrapper to be called")
+	r.True(called2, "expected handler wrapper to be called2")
+}
