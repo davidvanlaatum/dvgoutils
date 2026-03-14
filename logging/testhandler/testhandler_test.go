@@ -153,3 +153,14 @@ func TestTBFromContextNotTestHandler(t *testing.T) {
 		},
 	)
 }
+
+func TestSetupTestHandler(t *testing.T) {
+	r := require.New(t)
+	ctx, h, log := SetupTestHandler(t)
+	r.NotNil(ctx)
+	r.NotNil(h)
+	r.NotNil(log)
+	r.NotSame(t.Context(), ctx)
+	r.Same(h, log.Handler())
+	r.Same(log, logging.FromContext(ctx))
+}

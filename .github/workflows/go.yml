@@ -50,3 +50,5 @@ jobs:
           label: Go Coverage
           message: ${{ steps.coverage.outputs.coverage-pct-1dp }}%
           color: ${{ steps.coverage.outputs.meets-threshold == 'true' && 'green' || 'red' }}
+      - uses: pre-commit-ci/lite-action@v1.1.0
+        if: always()

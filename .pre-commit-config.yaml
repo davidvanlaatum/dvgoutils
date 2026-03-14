@@ -3,12 +3,11 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-yaml
-  - repo: https://github.com/dnephin/pre-commit-golang
-    rev: v0.5.1
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.4
     hooks:
-      - id: go-fmt
-      - id: validate-toml
-      - id: golangci-lint
-      - id: go-unit-tests
-      - id: go-build
-      - id: go-mod-tidy
+      - id: go-mod-tidy-repo
+      - id: go-imports
+      - id: golangci-lint-repo-mod
+      - id: go-test-mod
+      - id: go-build-repo-mod

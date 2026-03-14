@@ -169,3 +169,10 @@ func TBFromContext(ctx context.Context) testing.TB {
 	}
 	panic("logger handler is not a TestHandler")
 }
+
+func SetupTestHandler(t testing.TB) (ctx context.Context, handler *TestHandler, logger *slog.Logger) {
+	handler = NewTestHandler(t)
+	logger = slog.New(handler)
+	ctx = logging.WithLogger(t.Context(), logger)
+	return
+}
