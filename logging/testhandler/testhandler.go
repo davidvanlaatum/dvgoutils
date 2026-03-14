@@ -162,7 +162,12 @@ func (t *TestHandler) WithGroup(name string) slog.Handler {
 
 var _ slog.Handler = (*TestHandler)(nil)
 
+type contextKey struct{}
+
 func TBFromContext(ctx context.Context) testing.TB {
+	if t, ok := ctx.Value(contextKey{}).(testing.TB); ok {
+		return t
+	}
 	logger := logging.FromContext(ctx)
 	if testhandler, ok := logger.Handler().(*TestHandler); ok {
 		return testhandler.T
@@ -200,5 +205,6 @@ func SetupTestHandler(t testing.TB, opts ...SetupOption) (
 	}
 	logger = slog.New(h)
 	ctx = logging.WithLogger(t.Context(), logger)
+	ctx = context.WithValue(ctx, contextKey{}, t)
 	return
 }

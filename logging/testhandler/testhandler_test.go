@@ -154,6 +154,12 @@ func TestTBFromContextNotTestHandler(t *testing.T) {
 	)
 }
 
+func TestTBFromContextSetup(t *testing.T) {
+	r := require.New(t)
+	ctx, _, _ := SetupTestHandler(t)
+	r.Same(t, TBFromContext(ctx))
+}
+
 func TestSetupTestHandler(t *testing.T) {
 	r := require.New(t)
 	ctx, h, log := SetupTestHandler(t)
