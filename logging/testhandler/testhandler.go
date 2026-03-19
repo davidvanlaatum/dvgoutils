@@ -189,6 +189,25 @@ func WithHandlerWrapper(f HandlerWrapperFunc) SetupOption {
 	}
 }
 
+// WithRuntime attaches a TestRuntimeWrapper to the handler, which adds an attribute with the time since the wrapper was
+// created to each log record. If a start time is provided, it uses that instead of the current time. This can be used
+// to measure the runtime of code being tested. The attribute key is "test-runtime" and the value is a string
+// representation of the duration since the start time.
+func WithRuntime(startTime ...time.Time) SetupOption {
+	if len(startTime) > 1 {
+		panic("WithRuntime accepts at most one startTime argument")
+	}
+	return WithHandlerWrapper(
+		func(h slog.Handler) slog.Handler {
+			start := time.Now()
+			if len(startTime) > 0 {
+				start = startTime[0]
+			}
+			return NewTestRuntimeWrapper(start, h)
+		},
+	)
+}
+
 func SetupTestHandler(t testing.TB, opts ...SetupOption) (
 	ctx context.Context,
 	handler *TestHandler,
