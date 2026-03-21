@@ -108,12 +108,7 @@ func (t *TestHandler) Handle(_ context.Context, record slog.Record) error {
 	}
 	if record.PC != 0 {
 		c, _ := runtime.CallersFrames([]uintptr{record.PC}).Next()
-		pkg := strings.SplitN(c.Function, ".", 2)[0]
-		file := c.File
-		if idx := strings.LastIndex(file, "/"+pkg+"/"); idx >= 0 {
-			file = file[idx+1:]
-		}
-		r.Location = fmt.Sprintf("%s:%d", file, c.Line)
+		r.Location = fmt.Sprintf("%s:%d", c.File, c.Line)
 	}
 	r.Attrs = make([]slog.Attr, 0, len(t.attr)+record.NumAttrs())
 	r.Attrs = append(r.Attrs, t.attr...)

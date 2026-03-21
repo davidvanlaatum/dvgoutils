@@ -15,6 +15,9 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  GOFLAGS: -trimpath
+
 jobs:
 
   build:
@@ -52,3 +55,11 @@ jobs:
           color: ${{ steps.coverage.outputs.meets-threshold == 'true' && 'green' || 'red' }}
       - uses: pre-commit-ci/lite-action@v1.1.0
         if: always()
+  gremlins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+      - uses: go-gremlins/gremlins-action@v1
+        with:
+          version: latest
