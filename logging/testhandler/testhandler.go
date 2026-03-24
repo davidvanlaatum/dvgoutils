@@ -18,11 +18,11 @@ import (
 )
 
 type LogRecord struct {
-	Time     time.Time
-	Level    slog.Level
-	Msg      string
-	Location string
-	Attrs    []slog.Attr
+	Time   time.Time
+	Level  slog.Level
+	Msg    string
+	Source string
+	Attrs  []slog.Attr
 }
 
 func (l *LogRecord) String() string {
@@ -30,8 +30,8 @@ func (l *LogRecord) String() string {
 	if !l.Time.IsZero() {
 		a = append(a, slog.Time(slog.TimeKey, l.Time))
 	}
-	if l.Location != "" {
-		a = append(a, slog.String("location", l.Location))
+	if l.Source != "" {
+		a = append(a, slog.String(slog.SourceKey, l.Source))
 	}
 	a = append(
 		a,
@@ -44,7 +44,15 @@ func (l *LogRecord) String() string {
 			a, func(a slog.Attr) string {
 				v := &bytes.Buffer{}
 				e := json.NewEncoder(v)
-				if err := e.Encode(a.Value.Resolve().Any()); err != nil {
+				value := a.Value.Resolve()
+				var vv any
+				switch value.Kind() {
+				case slog.KindDuration:
+					vv = value.Duration().String()
+				default:
+					vv = value.Any()
+				}
+				if err := e.Encode(vv); err != nil {
 					panic(err)
 				}
 				for v.Len() > 0 && v.Bytes()[v.Len()-1] == '\n' {
@@ -108,7 +116,7 @@ func (t *TestHandler) Handle(_ context.Context, record slog.Record) error {
 	}
 	if record.PC != 0 {
 		c, _ := runtime.CallersFrames([]uintptr{record.PC}).Next()
-		r.Location = fmt.Sprintf("%s:%d", c.File, c.Line)
+		r.Source = fmt.Sprintf("%s:%d", c.File, c.Line)
 	}
 	r.Attrs = make([]slog.Attr, 0, len(t.attr)+record.NumAttrs())
 	r.Attrs = append(r.Attrs, t.attr...)

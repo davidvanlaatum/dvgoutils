@@ -67,22 +67,22 @@ func TestEmptyWithGroup(t *testing.T) {
 }
 
 var expectedLogs = map[string]string{
-	"built-ins":                 `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="message"`,
-	"attrs":                     `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="message" k="v"`,
-	"empty-attr":                `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" c="d"`,
-	"zero-time":                 `location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" k="v"`,
-	"WithAttrs":                 `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" k="v"`,
-	"groups":                    `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d" e="f"`,
-	"empty-group":               `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" e="f"`,
-	"inline-group":              `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" c="d" e="f"`,
-	"WithGroup":                 `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" G.a="b"`,
-	"multi-With":                `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d" G.H.e="f"`,
-	"empty-group-record":        `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d"`,
-	"nested-empty-group-record": `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d"`,
-	"resolve":                   `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" k="replaced"`,
-	"resolve-groups":            `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" G.a="v1" G.b="v2"`,
-	"resolve-WithAttrs":         `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" k="replaced"`,
-	"resolve-WithAttrs-groups":  `time="{{.time}}" location="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" G.a="v1" G.b="v2"`,
+	"built-ins":                 `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="message"`,
+	"attrs":                     `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="message" k="v"`,
+	"empty-attr":                `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" c="d"`,
+	"zero-time":                 `source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" k="v"`,
+	"WithAttrs":                 `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" k="v"`,
+	"groups":                    `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d" e="f"`,
+	"empty-group":               `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" e="f"`,
+	"inline-group":              `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" c="d" e="f"`,
+	"WithGroup":                 `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" G.a="b"`,
+	"multi-With":                `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d" G.H.e="f"`,
+	"empty-group-record":        `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d"`,
+	"nested-empty-group-record": `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d"`,
+	"resolve":                   `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" k="replaced"`,
+	"resolve-groups":            `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" G.a="v1" G.b="v2"`,
+	"resolve-WithAttrs":         `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" k="replaced"`,
+	"resolve-WithAttrs-groups":  `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" G.a="v1" G.b="v2"`,
 	"empty-PC":                  `time="{{.time}}" level="INFO" msg="message"`,
 }
 
@@ -103,8 +103,8 @@ func TestSlogHandler(t *testing.T) {
 			data := map[string]string{
 				"time": h.logs.logs[0].Time.Format(time.RFC3339Nano),
 			}
-			if l[0].Location != "" {
-				data["line"] = strings.SplitN(l[0].Location, ":", 2)[1]
+			if l[0].Source != "" {
+				data["line"] = strings.SplitN(l[0].Source, ":", 2)[1]
 			}
 			r.NoError(temp.Execute(b, data))
 			r.Equal(b.String(), d.logs[0])
@@ -230,4 +230,19 @@ func TestWithHandlerWrapperMultiple(t *testing.T) {
 	r.Same(log, logging.FromContext(ctx))
 	r.True(called, "expected handler wrapper to be called")
 	r.True(called2, "expected handler wrapper to be called2")
+}
+
+func TestLogRecordString(t *testing.T) {
+	r := require.New(t)
+	l := &LogRecord{
+		Level: slog.LevelInfo,
+		Msg:   "msg",
+		Attrs: []slog.Attr{
+			slog.Duration("duration", time.Second),
+			slog.Time("time", time.Date(2024, time.June, 1, 12, 0, 0, 0, time.UTC)),
+			slog.Int("int", 42),
+			slog.String("string", "hello"),
+		},
+	}
+	r.Equal(`level="INFO" msg="msg" duration="1s" time="2024-06-01T12:00:00Z" int=42 string="hello"`, l.String())
 }
