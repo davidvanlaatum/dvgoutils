@@ -76,7 +76,7 @@ func (d *DummyTB) Output() io.Writer {
 		func(p []byte) (n int, err error) {
 			d.Helper()
 			d.logs = append(d.logs, strings.TrimRight(string(p), "\r\n"))
-			return len(p), nil
+			return 0, fmt.Errorf("output is not supported in DummyTB")
 		},
 	)
 }
