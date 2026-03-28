@@ -30,16 +30,13 @@ func (l *LogRecord) String() string {
 	if !l.Time.IsZero() {
 		a = append(a, slog.Time(slog.TimeKey, l.Time))
 	}
-	if l.Source != "" {
-		a = append(a, slog.String(slog.SourceKey, l.Source))
-	}
 	a = append(
 		a,
 		slog.String(slog.LevelKey, l.Level.String()),
 		slog.String(slog.MessageKey, l.Msg),
 	)
 	a = append(a, l.Attrs...)
-	return strings.Join(
+	rt := strings.Join(
 		dvgoutils.MapSlice(
 			a, func(a slog.Attr) string {
 				v := &bytes.Buffer{}
@@ -62,6 +59,10 @@ func (l *LogRecord) String() string {
 			},
 		), " ",
 	)
+	if l.Source != "" {
+		return l.Source + ": " + rt
+	}
+	return rt
 }
 
 type logsHolder struct {
@@ -133,7 +134,9 @@ func (t *TestHandler) Handle(_ context.Context, record slog.Record) error {
 		defer t.logs.mu.Unlock()
 		t.logs.logs = append(t.logs.logs, *r)
 	}()
-	t.T.Log(r.String())
+	if _, err := t.T.Output().Write([]byte(r.String() + "\n")); err != nil {
+		return err
+	}
 	return nil
 }
 

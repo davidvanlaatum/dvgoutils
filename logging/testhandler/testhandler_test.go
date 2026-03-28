@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
 	"testing"
@@ -31,6 +32,13 @@ func setMapPath(m map[string]any, path []string, value any) {
 func (l *LogRecord) attrMap() map[string]any {
 	m := make(map[string]any)
 	s := l.String()
+	if l.Source != "" {
+		ss := strings.SplitN(s, ": ", 2)
+		if len(ss) == 2 {
+			s = ss[1]
+			m[slog.SourceKey] = ss[0]
+		}
+	}
 	for {
 		p := strings.SplitN(s, "=", 2)
 		if len(p) != 2 {
@@ -47,6 +55,10 @@ func (l *LogRecord) attrMap() map[string]any {
 	return m
 }
 
+type WriterFunc func(p []byte) (n int, err error)
+
+func (f WriterFunc) Write(p []byte) (n int, err error) { return f(p) }
+
 type DummyTB struct {
 	testing.TB
 	logs []string
@@ -58,6 +70,17 @@ func (d *DummyTB) Log(args ...any) {
 	d.logs = append(d.logs, fmt.Sprint(args...))
 }
 
+func (d *DummyTB) Output() io.Writer {
+	d.Helper()
+	return WriterFunc(
+		func(p []byte) (n int, err error) {
+			d.Helper()
+			d.logs = append(d.logs, strings.TrimRight(string(p), "\r\n"))
+			return len(p), nil
+		},
+	)
+}
+
 var _ testing.TB = (*DummyTB)(nil)
 
 func TestEmptyWithGroup(t *testing.T) {
@@ -67,22 +90,22 @@ func TestEmptyWithGroup(t *testing.T) {
 }
 
 var expectedLogs = map[string]string{
-	"built-ins":                 `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="message"`,
-	"attrs":                     `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="message" k="v"`,
-	"empty-attr":                `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" c="d"`,
-	"zero-time":                 `source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" k="v"`,
-	"WithAttrs":                 `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" k="v"`,
-	"groups":                    `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d" e="f"`,
-	"empty-group":               `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" e="f"`,
-	"inline-group":              `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" c="d" e="f"`,
-	"WithGroup":                 `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" G.a="b"`,
-	"multi-With":                `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d" G.H.e="f"`,
-	"empty-group-record":        `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d"`,
-	"nested-empty-group-record": `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" a="b" G.c="d"`,
-	"resolve":                   `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" k="replaced"`,
-	"resolve-groups":            `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" G.a="v1" G.b="v2"`,
-	"resolve-WithAttrs":         `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" k="replaced"`,
-	"resolve-WithAttrs-groups":  `time="{{.time}}" source="testing/slogtest/slogtest.go:{{.line}}" level="INFO" msg="msg" G.a="v1" G.b="v2"`,
+	"built-ins":                 `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="message"`,
+	"attrs":                     `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="message" k="v"`,
+	"empty-attr":                `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" a="b" c="d"`,
+	"zero-time":                 `testing/slogtest/slogtest.go:{{.line}}: level="INFO" msg="msg" k="v"`,
+	"WithAttrs":                 `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" a="b" k="v"`,
+	"groups":                    `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" a="b" G.c="d" e="f"`,
+	"empty-group":               `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" a="b" e="f"`,
+	"inline-group":              `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" a="b" c="d" e="f"`,
+	"WithGroup":                 `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" G.a="b"`,
+	"multi-With":                `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" a="b" G.c="d" G.H.e="f"`,
+	"empty-group-record":        `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" a="b" G.c="d"`,
+	"nested-empty-group-record": `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" a="b" G.c="d"`,
+	"resolve":                   `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" k="replaced"`,
+	"resolve-groups":            `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" G.a="v1" G.b="v2"`,
+	"resolve-WithAttrs":         `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" k="replaced"`,
+	"resolve-WithAttrs-groups":  `testing/slogtest/slogtest.go:{{.line}}: time="{{.time}}" level="INFO" msg="msg" G.a="v1" G.b="v2"`,
 	"empty-PC":                  `time="{{.time}}" level="INFO" msg="message"`,
 }
 
@@ -107,6 +130,9 @@ func TestSlogHandler(t *testing.T) {
 				data["line"] = strings.SplitN(l[0].Source, ":", 2)[1]
 			}
 			r.NoError(temp.Execute(b, data))
+			r.Len(d.logs, 1, "expected exactly one log entry in DummyTB")
+			// just so we can see the result in logs and see if It's clickable in IDEs etc
+			_, _ = t.Output().Write([]byte(d.logs[0] + "\n"))
 			r.Equal(b.String(), d.logs[0])
 			a := l[0].attrMap()
 			return a
