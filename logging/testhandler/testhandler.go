@@ -65,6 +65,24 @@ func (l *LogRecord) String() string {
 	return rt
 }
 
+// ToMapForAssert converts the log record to a map leaving out fields that are unpredictable such as the log's timestamp
+// and source information
+func (l *LogRecord) ToMapForAssert() map[string]any {
+	m := map[string]any{}
+	m[slog.MessageKey] = l.Msg
+	m[slog.LevelKey] = l.Level.String()
+	for _, a := range l.Attrs {
+		v := a.Value.Resolve()
+		switch v.Kind() {
+		case slog.KindDuration:
+			m[a.Key] = v.Duration().String()
+		default:
+			m[a.Key] = v.Any()
+		}
+	}
+	return m
+}
+
 type logsHolder struct {
 	logs []LogRecord
 	mu   sync.Mutex
@@ -85,6 +103,31 @@ func (t *TestHandler) Logs() []LogRecord {
 	t.logs.mu.Lock()
 	defer t.logs.mu.Unlock()
 	return t.logs.logs
+}
+
+// FirstMatchingLogForAssert calls ToMapForAssert on the first log that matches the given function
+func (t *TestHandler) FirstMatchingLogForAssert(f func(LogRecord) bool) map[string]any {
+	t.logs.mu.Lock()
+	defer t.logs.mu.Unlock()
+	for _, l := range t.logs.logs {
+		if f(l) {
+			return l.ToMapForAssert()
+		}
+	}
+	return nil
+}
+
+// FindAllMatchingLogsForAssert converts all logs that match the function to a slice of maps using ToMapForAssert
+func (t *TestHandler) FindAllMatchingLogsForAssert(f func(LogRecord) bool) []map[string]any {
+	t.logs.mu.Lock()
+	defer t.logs.mu.Unlock()
+	var res []map[string]any
+	for _, l := range t.logs.logs {
+		if f(l) {
+			res = append(res, l.ToMapForAssert())
+		}
+	}
+	return res
 }
 
 func (t *TestHandler) Enabled(_ context.Context, _ slog.Level) bool {

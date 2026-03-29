@@ -258,6 +258,96 @@ func TestWithHandlerWrapperMultiple(t *testing.T) {
 	r.True(called2, "expected handler wrapper to be called2")
 }
 
+func TestFindAllMatchingLogsForAssert(t *testing.T) {
+	r := require.New(t)
+	h := NewTestHandler(t)
+	logger := slog.New(h)
+
+	logger.Info("first", slog.String("kind", "keep"), slog.Int("count", 1))
+	logger.Info("second", slog.String("kind", "skip"), slog.Int("count", 2))
+	logger.Warn("third", slog.String("kind", "keep"), slog.Duration("delay", 2*time.Second))
+
+	logs := h.FindAllMatchingLogsForAssert(
+		func(record LogRecord) bool {
+			for _, attr := range record.Attrs {
+				if attr.Key == "kind" && attr.Value.String() == "keep" {
+					return true
+				}
+			}
+			return false
+		},
+	)
+
+	r.Equal(
+		[]map[string]any{
+			{
+				slog.MessageKey: "first",
+				slog.LevelKey:   slog.LevelInfo.String(),
+				"kind":          "keep",
+				"count":         int64(1),
+			},
+			{
+				slog.MessageKey: "third",
+				slog.LevelKey:   slog.LevelWarn.String(),
+				"kind":          "keep",
+				"delay":         "2s",
+			},
+		},
+		logs,
+	)
+}
+
+func TestFindAllMatchingLogsForAssertHandlesSimilarAttrs(t *testing.T) {
+	r := require.New(t)
+	h := NewTestHandler(t)
+	logger := slog.New(h)
+
+	logger.Info(
+		"nested-empty",
+		slog.Group("request", slog.String("id", "target"), slog.String("meta.trace", "")),
+		slog.Any("optional", nil),
+	)
+	logger.Info(
+		"nested-filled",
+		slog.Group("request", slog.String("id", "target"), slog.String("meta.trace", "present")),
+		slog.Any("optional", nil),
+	)
+	logger.Info(
+		"wrong-id",
+		slog.Group("request", slog.String("id", "other"), slog.String("meta.trace", "")),
+		slog.Any("optional", nil),
+	)
+
+	logs := h.FindAllMatchingLogsForAssert(
+		func(record LogRecord) bool {
+			values := record.ToMapForAssert()
+			requestID, ok := values["request.id"].(string)
+			if !ok || requestID != "target" {
+				return false
+			}
+			trace, ok := values["request.meta.trace"].(string)
+			if !ok || trace != "" {
+				return false
+			}
+			optional, ok := values["optional"]
+			return ok && optional == nil
+		},
+	)
+
+	r.Equal(
+		[]map[string]any{
+			{
+				slog.MessageKey:      "nested-empty",
+				slog.LevelKey:        slog.LevelInfo.String(),
+				"request.id":         "target",
+				"request.meta.trace": "",
+				"optional":           nil,
+			},
+		},
+		logs,
+	)
+}
+
 func TestLogRecordString(t *testing.T) {
 	r := require.New(t)
 	l := &LogRecord{
@@ -271,4 +361,104 @@ func TestLogRecordString(t *testing.T) {
 		},
 	}
 	r.Equal(`level="INFO" msg="msg" duration="1s" time="2024-06-01T12:00:00Z" int=42 string="hello"`, l.String())
+}
+
+func TestFirstMatchingLogForAssertConvertsToMap(t *testing.T) {
+	r := require.New(t)
+	_, h, log := SetupTestHandler(t)
+	log.Info("msg", slog.String("k", "v"), slog.Duration("duration", time.Second), slog.Int("int", 42))
+	r.Equal(
+		map[string]any{
+			"msg":      "msg",
+			"level":    "INFO",
+			"k":        "v",
+			"int":      int64(42),
+			"duration": time.Second.String(),
+		}, h.FirstMatchingLogForAssert(
+			func(record LogRecord) bool {
+				return true
+			},
+		),
+	)
+}
+
+func TestFirstMatchingLogForAssertFindsCorrectLog(t *testing.T) {
+	r := require.New(t)
+	_, h, log := SetupTestHandler(t)
+	log.Info("log1")
+	log.Info("log2")
+	log.Info("log3")
+	r.Equal(
+		map[string]any{
+			"msg":   "log2",
+			"level": "INFO",
+		}, h.FirstMatchingLogForAssert(
+			func(record LogRecord) bool {
+				return record.Msg == "log2"
+			},
+		),
+	)
+}
+
+func TestFirstMatchingLogForAssertReturnsNilIfNoLogFound(t *testing.T) {
+	r := require.New(t)
+	_, h, log := SetupTestHandler(t)
+	log.Info("log1")
+	log.Info("log2")
+	log.Info("log3")
+	r.Nil(
+		h.FirstMatchingLogForAssert(
+			func(record LogRecord) bool {
+				return record.Msg == "log4"
+			},
+		),
+	)
+}
+
+func TestFirstMatchingLogForAssertHandlesSimilarAttrs(t *testing.T) {
+	r := require.New(t)
+	_, h, log := SetupTestHandler(t)
+
+	log.Info(
+		"wrong-empty",
+		slog.Group("payload", slog.String("id", "target"), slog.String("value", "")),
+		slog.Any("optional", "set"),
+	)
+	log.Info(
+		"match",
+		slog.Group("payload", slog.String("id", "target"), slog.String("value", "")),
+		slog.Any("optional", nil),
+	)
+	log.Info(
+		"wrong-nested",
+		slog.Group("payload", slog.String("id", "target"), slog.String("value", "non-empty")),
+		slog.Any("optional", nil),
+	)
+
+	match := h.FirstMatchingLogForAssert(
+		func(record LogRecord) bool {
+			values := record.ToMapForAssert()
+			payloadID, ok := values["payload.id"].(string)
+			if !ok || payloadID != "target" {
+				return false
+			}
+			payloadValue, ok := values["payload.value"].(string)
+			if !ok || payloadValue != "" {
+				return false
+			}
+			optional, ok := values["optional"]
+			return ok && optional == nil
+		},
+	)
+
+	r.Equal(
+		map[string]any{
+			slog.MessageKey: "match",
+			slog.LevelKey:   slog.LevelInfo.String(),
+			"payload.id":    "target",
+			"payload.value": "",
+			"optional":      nil,
+		},
+		match,
+	)
 }

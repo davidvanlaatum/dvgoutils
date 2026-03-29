@@ -15,7 +15,7 @@ This repository provides Go utility packages for generic programming, logging, a
 - **Units**: `units/bits.go` and `units/bytes.go` define `Bits` and `Bytes` types with custom string and log value formatting.
 
 ## Developer Workflows
-- **Testing**: Run all tests with `go test ./...`. All packages are expected to be covered by tests.
+- **Testing**: Run all tests with `go test -trimpath ./...`. `-trimpath` is required so source locations in test output are stable across machines and Go installations. All packages are expected to be covered by tests.
 - **Adding Utilities**: Place generic helpers in the root. For logging or units, use the respective subdirectory.
 - **Extending Logging**: To add log handler wrappers for tests, use `WithHandlerWrapper` and `SetupTestHandler` (see `testhandler.go`).
 
@@ -41,4 +41,3 @@ This repository provides Go utility packages for generic programming, logging, a
 - `logging/context.go`, `logging/errattr.go`: Logging context and error helpers
 - `logging/testhandler/testhandler.go`: Test log handler and setup utilities
 - `units/bits.go`, `units/bytes.go`: Units types and formatting
-
