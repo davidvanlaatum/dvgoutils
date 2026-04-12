@@ -41,6 +41,7 @@ func (l *LogRecord) String() string {
 			a, func(a slog.Attr) string {
 				v := &bytes.Buffer{}
 				e := json.NewEncoder(v)
+				e.SetEscapeHTML(false)
 				value := a.Value.Resolve()
 				var vv any
 				switch value.Kind() {

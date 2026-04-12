@@ -358,9 +358,13 @@ func TestLogRecordString(t *testing.T) {
 			slog.Time("time", time.Date(2024, time.June, 1, 12, 0, 0, 0, time.UTC)),
 			slog.Int("int", 42),
 			slog.String("string", "hello"),
+			slog.String("url", "http://example.com?foo=bar&baz=qux"),
 		},
 	}
-	r.Equal(`level="INFO" msg="msg" duration="1s" time="2024-06-01T12:00:00Z" int=42 string="hello"`, l.String())
+	r.Equal(
+		`level="INFO" msg="msg" duration="1s" time="2024-06-01T12:00:00Z" int=42 string="hello" url="http://example.com?foo=bar&baz=qux"`,
+		l.String(),
+	)
 }
 
 func TestFirstMatchingLogForAssertConvertsToMap(t *testing.T) {
