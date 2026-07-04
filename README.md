@@ -223,3 +223,5 @@ go test -trimpath ./...
 ```
 
 `-trimpath` keeps source locations in test output stable across machines and Go installations.
+
+Runnable Go examples live in `*_test.go` files and are checked by the same command.
