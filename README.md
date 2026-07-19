@@ -33,6 +33,10 @@ even := dvgoutils.FilterSlice(numbers, func(v int) bool {
 	return v%2 == 0
 })
 
+evenCount := dvgoutils.CountSlice(numbers, func(v int) bool {
+	return v%2 == 0
+})
+
 labels := dvgoutils.MapSlice(even, func(v int) string {
 	return fmt.Sprintf("value-%d", v)
 })

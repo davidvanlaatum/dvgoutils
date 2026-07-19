@@ -20,6 +20,19 @@ func ExampleFilterSlice() {
 	// [2 4 6]
 }
 
+func ExampleCountSlice() {
+	numbers := []int{1, 2, 3, 4, 5, 6}
+
+	evenCount := dvgoutils.CountSlice(numbers, func(v int) bool {
+		return v%2 == 0
+	})
+
+	fmt.Println(evenCount)
+
+	// Output:
+	// 3
+}
+
 func ExampleMapSlice() {
 	numbers := []int{1, 2, 3}
 
