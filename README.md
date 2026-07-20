@@ -209,14 +209,18 @@ The `units` package provides typed bit and byte values with human-readable strin
 ```go
 size := 42 * units.MiB
 rate := 100 * units.Mb
+transferRate := size.PerSecond(2 * time.Second)
+bitRate := rate.PerSecond(2 * time.Second)
 
 fmt.Println(size) // 42.0 MiB
 fmt.Println(rate) // 100.0 Mb
+fmt.Println(transferRate) // 21.0 MiB/s
+fmt.Println(bitRate) // 50.0 Mb/s
 
-logger.Info("transfer complete", slog.Any("size", size), slog.Any("rate", rate))
+logger.Info("transfer complete", slog.Any("size", size), slog.Any("rate", transferRate))
 ```
 
-`Bytes` uses binary units (`KiB`, `MiB`, `GiB`, ...). `Bits` uses decimal units (`Kb`, `Mb`, `Gb`, ...).
+`Bytes` and `BytesPerSecond` use binary units (`KiB`, `MiB`, `GiB`, ...). `Bits` and `BitsPerSecond` use decimal units (`Kb`, `Mb`, `Gb`, ...). Use `Bytes.PerSecond` or `Bits.PerSecond` with a positive elapsed duration to calculate a transfer rate.
 
 ## Development
 

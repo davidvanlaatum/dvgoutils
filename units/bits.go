@@ -3,9 +3,12 @@ package units
 import (
 	"fmt"
 	"log/slog"
+	"time"
 )
 
 type Bits int64
+
+type BitsPerSecond float64
 
 const (
 	Kb Bits = 1000
@@ -30,5 +33,31 @@ func (b Bits) String() string {
 }
 
 func (b Bits) LogValue() slog.Value {
+	return slog.StringValue(b.String())
+}
+
+func (b Bits) PerSecond(duration time.Duration) BitsPerSecond {
+	if duration <= 0 {
+		panic("duration must be positive")
+	}
+
+	return BitsPerSecond(float64(b) / duration.Seconds())
+}
+
+func (b BitsPerSecond) String() string {
+	const unit = 1000
+	const prefixes = "KMGTPE"
+	if b < unit {
+		return fmt.Sprintf("%.1f b/s", b)
+	}
+	div, exp := float64(unit), 0
+	for n := float64(b) / unit; n >= unit && exp < len(prefixes)-1; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cb/s", float64(b)/div, prefixes[exp])
+}
+
+func (b BitsPerSecond) LogValue() slog.Value {
 	return slog.StringValue(b.String())
 }

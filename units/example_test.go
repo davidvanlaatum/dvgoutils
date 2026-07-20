@@ -3,6 +3,7 @@ package units_test
 import (
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/davidvanlaatum/dvgoutils/units"
 )
@@ -32,4 +33,22 @@ func ExampleBytes_LogValue() {
 
 	// Output:
 	// 1.5 KiB
+}
+
+func ExampleBytes_PerSecond() {
+	size := 42 * units.MiB
+
+	fmt.Println(size.PerSecond(2 * time.Second))
+
+	// Output:
+	// 21.0 MiB/s
+}
+
+func ExampleBits_PerSecond() {
+	size := 100 * units.Mb
+
+	fmt.Println(size.PerSecond(2 * time.Second))
+
+	// Output:
+	// 50.0 Mb/s
 }
