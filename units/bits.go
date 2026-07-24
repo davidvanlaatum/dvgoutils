@@ -3,6 +3,7 @@ package units
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"time"
 )
 
@@ -38,7 +39,7 @@ func (b Bits) LogValue() slog.Value {
 
 func (b Bits) PerSecond(duration time.Duration) BitsPerSecond {
 	if duration <= 0 {
-		panic("duration must be positive")
+		return BitsPerSecond(math.NaN())
 	}
 
 	return BitsPerSecond(float64(b) / duration.Seconds())
@@ -47,7 +48,7 @@ func (b Bits) PerSecond(duration time.Duration) BitsPerSecond {
 func (b BitsPerSecond) String() string {
 	const unit = 1000
 	const prefixes = "KMGTPE"
-	if b < unit {
+	if math.IsNaN(float64(b)) || b < unit {
 		return fmt.Sprintf("%.1f b/s", b)
 	}
 	div, exp := float64(unit), 0

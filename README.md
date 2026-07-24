@@ -220,7 +220,7 @@ fmt.Println(bitRate) // 50.0 Mb/s
 logger.Info("transfer complete", slog.Any("size", size), slog.Any("rate", transferRate))
 ```
 
-`Bytes` and `BytesPerSecond` use binary units (`KiB`, `MiB`, `GiB`, ...). `Bits` and `BitsPerSecond` use decimal units (`Kb`, `Mb`, `Gb`, ...). Use `Bytes.PerSecond` or `Bits.PerSecond` with a positive elapsed duration to calculate a transfer rate.
+`Bytes` and `BytesPerSecond` use binary units (`KiB`, `MiB`, `GiB`, ...). `Bits` and `BitsPerSecond` use decimal units (`Kb`, `Mb`, `Gb`, ...). Use `Bytes.PerSecond` or `Bits.PerSecond` with a positive elapsed duration to calculate a transfer rate. Both methods return `NaN` when the duration is zero or negative.
 
 ## Development
 

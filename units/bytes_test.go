@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"log/slog"
+	"math"
 	"testing"
 	"time"
 
@@ -58,12 +59,8 @@ func TestBytes_PerSecond(t *testing.T) {
 
 	r.Equal(BytesPerSecond(1536), Bytes(3*KiB).PerSecond(2*time.Second))
 	r.Equal(BytesPerSecond(2048), KiB.PerSecond(500*time.Millisecond))
-	r.PanicsWithValue("duration must be positive", func() {
-		KiB.PerSecond(0)
-	})
-	r.PanicsWithValue("duration must be positive", func() {
-		KiB.PerSecond(-time.Second)
-	})
+	r.True(math.IsNaN(float64(KiB.PerSecond(0))))
+	r.True(math.IsNaN(float64(KiB.PerSecond(-time.Second))))
 }
 
 func TestBytesPerSecond_String(t *testing.T) {
@@ -79,6 +76,7 @@ func TestBytesPerSecond_String(t *testing.T) {
 		{"1.5 KiB per second", 1536, "1.5 KiB/s"},
 		{"1 MiB per second", 1024 * 1024, "1.0 MiB/s"},
 		{"above EiB per second", BytesPerSecond(8 * float64(EiB)), "8.0 EiB/s"},
+		{"not a number", BytesPerSecond(math.NaN()), "NaN B/s"},
 	}
 	for _, test := range tests {
 		test := test
