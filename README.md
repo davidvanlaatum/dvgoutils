@@ -11,6 +11,8 @@ Small Go utility packages for generic helpers, context-aware `slog` logging, tes
 go get github.com/davidvanlaatum/dvgoutils
 ```
 
+This module supports the current stable Go release and the previous stable release (`stable - 1`). The current minimum declared in `go.mod` is Go 1.26.
+
 Import only the packages you need:
 
 ```go

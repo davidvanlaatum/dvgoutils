@@ -16,6 +16,7 @@ This repository provides Go utility packages for generic programming, logging, a
 
 ## Developer Workflows
 - **Testing**: Run all tests with `go test -trimpath ./...`. `-trimpath` is required so source locations in test output are stable across machines and Go installations. All packages are expected to be covered by tests.
+- **Go version matrix**: The module supports `stable` and `stable - 1`. Keep the Go workflow matrix in `.github/workflows/go.yml` set to the `oldstable` and `stable` aliases, and keep the `go.mod` minimum aligned with the current `oldstable` release.
 - **Adding Utilities**: Place generic helpers in the root. For logging or units, use the respective subdirectory.
 - **Extending Logging**: To add log handler wrappers for tests, use `WithHandlerWrapper` and `SetupTestHandler` (see `testhandler.go`).
 - **README Upkeep**: Keep `README.md` in sync with public API, usage patterns, logging/testhandler behaviour, units formatting, and developer workflow changes. Skip README edits only for changes that are clearly internal and do not affect how consumers use the library.
