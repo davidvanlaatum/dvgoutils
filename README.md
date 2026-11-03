@@ -112,7 +112,11 @@ logger.Info("starting", "component", "worker")
 By default, colour is enabled only when the writer exposes `Fd() uintptr` and
 that descriptor is a terminal. Files, pipes, buffers and wrappers without `Fd`
 receive plain text. A non-empty `NO_COLOR` or `TERM=dumb` disables automatic
-colour. Detection and environment lookup happen once at construction.
+colour. On Windows, Auto reads the console mode and enables
+`ENABLE_PROCESSED_OUTPUT` and `ENABLE_VIRTUAL_TERMINAL_PROCESSING`, preserving
+all existing flags. If reading or setting the mode fails, output stays plain.
+The enabled flags remain set for other users of that console screen buffer.
+Detection, console preparation and environment lookup happen once at construction.
 
 Use `colour.Always` or `colour.Never` to override detection and the environment.
 The embedded standard handler options support levels, source locations and
@@ -144,10 +148,12 @@ Keys are cyan, messages green, and levels grey (debug), blue (info), yellow
 (warning) or red (error). Stripping the ANSI colour sequences leaves the
 standard text format, including escaping, groups and resolved `slog.LogValuer`
 values. Standard handler concurrency guarantees are preserved. Forced colour
-requires an output destination that understands ANSI escapes.
+requires an output destination that understands ANSI escapes; it does not
+prepare Windows consoles. `colour.Never` leaves console modes unchanged.
 
-This package uses `golang.org/x/term` and its `golang.org/x/sys` dependency for
-terminal detection. Other packages in this module do not import them.
+This package uses `golang.org/x/term` and `golang.org/x/sys` for terminal
+detection and Windows console preparation. Other packages in this module do not
+import them.
 
 ## Testing Logs
 

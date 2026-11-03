@@ -36,12 +36,19 @@ func TestAutomaticDetection(t *testing.T) {
 				value := map[string]string{"NO_COLOR": tc.noColour, "TERM": tc.term}[key]
 				return value, value != ""
 			}
-			isTerminal := func(fd int) bool {
-				r.Equal(123, fd)
+			calls := 0
+			isTerminal := func(fd uintptr) bool {
+				calls++
+				r.Equal(uintptr(123), fd)
 				return tc.terminal
 			}
 			r.Equal(tc.want, autoColour(&descriptorWriter{}, lookup, isTerminal))
 			r.False(autoColour(&bytes.Buffer{}, lookup, isTerminal))
+			if tc.noColour != "" || tc.term == "dumb" {
+				r.Zero(calls, "environment overrides must skip console preparation")
+			} else {
+				r.Equal(1, calls)
+			}
 		})
 	}
 }
@@ -122,4 +129,28 @@ func TestHandlerPropagatesWriteError(t *testing.T) {
 	expected := errors.New("write failed")
 	handler := NewHandler(failedLogWriter{err: expected}, &Options{Mode: Always})
 	r.ErrorIs(handler.Handle(t.Context(), slog.Record{Message: "test"}), expected)
+}
+
+func TestRedirectedOutput(t *testing.T) {
+	t.Parallel()
+	r := require.New(t)
+	lookup := func(string) (string, bool) { return "", false }
+	file, err := os.CreateTemp(t.TempDir(), "log")
+	r.NoError(err)
+	t.Cleanup(func() { r.NoError(file.Close()) })
+	reader, writer, err := os.Pipe()
+	r.NoError(err)
+	t.Cleanup(func() {
+		r.NoError(reader.Close())
+		r.NoError(writer.Close())
+	})
+	for _, out := range []*os.File{file, writer} {
+		r.False(prepareTerminal(out.Fd()))
+		r.False(autoColour(out, lookup, prepareTerminal))
+	}
+	slog.New(NewHandler(file, &Options{LookupEnv: lookup})).Info("plain")
+	data, err := os.ReadFile(file.Name())
+	r.NoError(err)
+	r.Contains(string(data), "msg=plain")
+	r.NotContains(string(data), "\x1b[")
 }

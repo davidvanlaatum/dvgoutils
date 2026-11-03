@@ -7,8 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-
-	"golang.org/x/term"
 )
 
 // Mode controls when a handler uses colour.
@@ -16,6 +14,7 @@ type Mode uint8
 
 const (
 	// Auto enables colour for terminals unless NO_COLOR is non-empty or TERM is dumb.
+	// On Windows, it enables VT output processing or falls back to plain text.
 	Auto Mode = iota
 	// Always enables colour, including for redirected output and when NO_COLOR is set.
 	Always
@@ -51,7 +50,11 @@ type Options struct {
 // NewHandler returns a standard text handler with optional ANSI colouring.
 // A nil opts uses the defaults. It does not change slog's default logger.
 // Auto detects writers implementing Fd() uintptr; other writers use plain text.
-// The writer must support ANSI escapes when colour is enabled.
+// On Windows, Auto enables processed output and VT processing, preserving other
+// console mode flags. If reading or setting the mode fails, it uses plain text.
+// These console flags remain enabled for other users of the same screen buffer.
+// Always emits ANSI escapes without preparing the console; the caller must
+// provide an output destination that supports them. Never does not alter console modes.
 // NewHandler panics if opts.Mode is not Auto, Always or Never.
 func NewHandler(out io.Writer, opts *Options) *slog.TextHandler {
 	var options Options
@@ -64,7 +67,7 @@ func NewHandler(out io.Writer, opts *Options) *slog.TextHandler {
 	var enabled bool
 	switch options.Mode {
 	case Auto:
-		enabled = autoColour(out, options.LookupEnv, term.IsTerminal)
+		enabled = autoColour(out, options.LookupEnv, prepareTerminal)
 	case Always:
 		enabled = true
 	case Never:
@@ -77,7 +80,7 @@ func NewHandler(out io.Writer, opts *Options) *slog.TextHandler {
 	return slog.NewTextHandler(out, &options.HandlerOptions)
 }
 
-func autoColour(out io.Writer, lookupEnv func(string) (string, bool), isTerminal func(int) bool) bool {
+func autoColour(out io.Writer, lookupEnv func(string) (string, bool), prepareTerminal func(uintptr) bool) bool {
 	if value, _ := lookupEnv("NO_COLOR"); value != "" {
 		return false
 	}
@@ -85,5 +88,5 @@ func autoColour(out io.Writer, lookupEnv func(string) (string, bool), isTerminal
 		return false
 	}
 	file, ok := out.(interface{ Fd() uintptr })
-	return ok && isTerminal(int(file.Fd()))
+	return ok && prepareTerminal(file.Fd())
 }
