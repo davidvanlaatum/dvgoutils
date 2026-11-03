@@ -55,6 +55,19 @@ jobs:
           color: ${{ steps.coverage.outputs.meets-threshold == 'true' && 'green' || 'red' }}
       - uses: pre-commit-ci/lite-action@v1.2.0
         if: always()
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        go-version: [ 'oldstable', 'stable' ]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Test with race detection
+        run: go test -trimpath -race ./...
+
   gremlins:
     runs-on: ubuntu-latest
     steps:
