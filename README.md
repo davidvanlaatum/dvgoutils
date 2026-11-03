@@ -19,6 +19,7 @@ Import only the packages you need:
 import (
 	"github.com/davidvanlaatum/dvgoutils"
 	"github.com/davidvanlaatum/dvgoutils/logging"
+	"github.com/davidvanlaatum/dvgoutils/logging/colour"
 	"github.com/davidvanlaatum/dvgoutils/logging/testhandler"
 	"github.com/davidvanlaatum/dvgoutils/units"
 )
@@ -97,6 +98,56 @@ if err := doWork(ctx); err != nil {
 	logging.FromContext(ctx).Error("work failed", logging.Err(err))
 }
 ```
+
+### Coloured Console Logs
+
+`logging/colour` adds ANSI colours to the standard `slog.TextHandler`. Common
+setup needs only one line:
+
+```go
+logger := slog.New(colour.NewHandler(os.Stderr, nil))
+logger.Info("starting", "component", "worker")
+```
+
+By default, colour is enabled only when the writer exposes `Fd() uintptr` and
+that descriptor is a terminal. Files, pipes, buffers and wrappers without `Fd`
+receive plain text. A non-empty `NO_COLOR` or `TERM=dumb` disables automatic
+colour. Detection and environment lookup happen once at construction.
+
+Use `colour.Always` or `colour.Never` to override detection and the environment.
+The embedded standard handler options support levels, source locations and
+attribute replacement:
+
+```go
+var level slog.LevelVar // defaults to Info
+logger := slog.New(colour.NewHandler(os.Stderr, &colour.Options{
+	Mode: colour.Always,
+	HandlerOptions: slog.HandlerOptions{
+		Level:     &level,
+		AddSource: true,
+	},
+}))
+level.Set(slog.LevelDebug)
+logger.Debug("debug logging enabled")
+
+// Optional: make this the process-wide logger, or store it in a context.
+slog.SetDefault(logger)
+ctx := logging.WithLogger(context.Background(), logger)
+```
+
+For a CLI flag, parse its value with `colour.ParseMode(value)`, which accepts
+`auto` (also the empty string), `always` and `never`, and returns an error for
+other values. Set the returned mode in `colour.Options.Mode`. Tests and embedded
+applications can supply `Options.LookupEnv`; nil uses `os.LookupEnv`.
+
+Keys are cyan, messages green, and levels grey (debug), blue (info), yellow
+(warning) or red (error). Stripping the ANSI colour sequences leaves the
+standard text format, including escaping, groups and resolved `slog.LogValuer`
+values. Standard handler concurrency guarantees are preserved. Forced colour
+requires an output destination that understands ANSI escapes.
+
+This package uses `golang.org/x/term` and its `golang.org/x/sys` dependency for
+terminal detection. Other packages in this module do not import them.
 
 ## Testing Logs
 
